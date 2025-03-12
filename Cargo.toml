@@ -18,9 +18,9 @@ maintenance = { status = "experimental" }
 
 [features]
 # If using no default features, you must enable either hashbrown or std.
-default = ["simd", "hashbrown", "variable-fonts"]
+default = ["simd", "hashbrown", "variable-fonts", "ttf-parser/no-std-float"]
 # Enable this flag to use std::HashMap instead of hashbrown::HashMap
-std = []
+std = ["ttf-parser/std"]
 # Enable this flag to leverage SIMD usage on x86/x86_64 platforms.
 simd = []
 # Enable this flag to parallelize font loading using threads.
@@ -29,7 +29,7 @@ parallel = ["rayon", "hashbrown", "hashbrown/rayon"]
 variable-fonts = ["ttf-parser/variable-fonts"]
 
 [dependencies]
-ttf-parser = { version = "0.21", default-features = false, features = [
+ttf-parser = { version = "0.25", default-features = false, features = [
     "opentype-layout",
 ] }
 hashbrown = { version = "0.15", optional = true }
