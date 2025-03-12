@@ -26,7 +26,7 @@ simd = []
 # Enable this flag to parallelize font loading using threads.
 parallel = ["rayon", "hashbrown", "hashbrown/rayon"]
 # Enable this for variable font support
-variable-fonts = ["ttf-parser/variable-fonts"]
+variable-fonts = ["ttf-parser/variable-fonts", "ttf-parser/gvar-alloc"]
 
 [dependencies]
 ttf-parser = { version = "0.25", default-features = false, features = [
