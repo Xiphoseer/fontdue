@@ -156,8 +156,45 @@ impl Default for Glyph {
     }
 }
 
+/// A single variation axis, e.g Weight `wght`
+///
+/// See <https://v-fonts.com/>
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[cfg(feature = "variable-fonts")]
+pub struct VariationAxis(u32);
+
+#[cfg(feature = "variable-fonts")]
+impl VariationAxis {
+    pub const fn from_bytes(bytes: [u8; 4]) -> Self {
+        Self(u32::from_be_bytes(bytes))
+    }
+
+    /// Italic `ital`
+    pub const ITALIC: VariationAxis = VariationAxis::from_bytes(*b"ital");
+
+    /// Optical Size `opsz`
+    pub const OPTICAL_SIZE: VariationAxis = VariationAxis::from_bytes(*b"opsz");
+
+    /// Slant `slnt`
+    pub const SLANT: VariationAxis = VariationAxis::from_bytes(*b"slnt");
+
+    /// Width `wdth`
+    pub const WIDTH: VariationAxis = VariationAxis::from_bytes(*b"wdth");
+
+    /// Weight `wght`
+    pub const WEIGHT: VariationAxis = VariationAxis::from_bytes(*b"wght");
+}
+
+#[cfg(feature = "variable-fonts")]
+impl From<VariationAxis> for Tag {
+    fn from(value: VariationAxis) -> Self {
+        Tag(value.0)
+    }
+}
+
 /// Settings for controlling specific font and layout behavior.
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
+#[non_exhaustive]
 pub struct FontSettings {
     /// The default is 0. The index of the font to use if parsing a font collection.
     pub collection_index: u32,
@@ -172,6 +209,10 @@ pub struct FontSettings {
     /// i.e. `Font::raserize_indexed`, as singular characters do not have enough context to be
     /// substituted.
     pub load_substitutions: bool,
+    /// The default is an empty set. If provided, the font face is configured on the given
+    /// axes before loading the glyps.
+    #[cfg(feature = "variable-fonts")]
+    pub variations: HashMap<VariationAxis, f32>,
 }
 
 impl Default for FontSettings {
@@ -180,6 +221,7 @@ impl Default for FontSettings {
             collection_index: 0,
             scale: 40.0,
             load_substitutions: true,
+            variations: HashMap::default(),
         }
     }
 }
@@ -242,7 +284,7 @@ impl Font {
     pub fn from_bytes<Data: Deref<Target = [u8]>>(data: Data, settings: FontSettings) -> FontResult<Font> {
         let hash = crate::hash::hash(&data);
 
-        let face = match Face::parse(&data, settings.collection_index) {
+        let mut face = match Face::parse(&data, settings.collection_index) {
             Ok(f) => f,
             Err(e) => return Err(convert_error(e)),
         };
@@ -276,6 +318,12 @@ impl Font {
         // If the gsub table exists and the user needs it, add all of its glyphs to the glyphs we should load.
         if settings.load_substitutions {
             load_gsub(&face, &mut indices_to_load);
+        }
+
+        // If there are variations set, apply them
+        #[cfg(feature = "variable-fonts")]
+        for (&axis, &value) in &settings.variations {
+            face.set_variation(axis.into(), value);
         }
 
         let units_per_em = face.units_per_em() as f32;
